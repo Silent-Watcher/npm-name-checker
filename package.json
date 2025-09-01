@@ -1,9 +1,9 @@
 {
 	"name": "npm-name-checker2",
-	"version": "0.0.0",
+	"version": "0.9.0",
 	"type": "module",
 	"bin": {
-		"pkg-name-check": "dist/bin.js"
+		"name-check": "dist/bin.js"
 	},
 	"keywords": [
 		"cli",
@@ -30,11 +30,11 @@
 	"description": "Check whether a package or organization name is available on npm",
 	"scripts": {
 		"tsc": "tsc",
-		"dev": "tsx --watch src/cli.ts",
+		"dev": "tsx --watch src/bin.ts",
 		"prebuild": "npm run tsc && npm run clean",
 		"build": "tsup",
 		"prestart": "npm run build",
-		"start": "node dist/cli.js",
+		"start": "node dist/bin.js",
 		"test": "vitest run --coverage",
 		"test:watch": "vitest dev",
 		"prelint": "biome format --write ./src/*.ts ./tests/*.ts",
@@ -64,7 +64,6 @@
 	},
 	"dependencies": {
 		"chalk": "^5.5.0",
-		"cli-table": "^0.3.11",
 		"commander": "^14.0.0",
 		"ora": "^8.2.0"
 	}
