@@ -1,20 +1,30 @@
 import chalk from 'chalk';
 import ora from 'ora';
+import { getCache, setCache } from './cache';
+import { fetchWithRateLimit } from './rateLimit';
 import type { AvaiabilityResult } from './types';
 
-async function checkNpmAvailability(name: string): Promise<AvaiabilityResult> {
+export async function checkNpmAvailability(
+	name: string,
+	ttlMs: number,
+): Promise<AvaiabilityResult> {
+	const cacheKey = `npm:${name}`;
+	const cached = getCache<AvaiabilityResult>(cacheKey, ttlMs);
+	if (cached) return cached;
+
 	const url = `https://registry.npmjs.org/${name}`;
 	try {
-		const response = await fetch(url, {
+		const response = await fetchWithRateLimit(url, {
 			method: 'GET',
 		});
 		const resObj = (await response.json()) as any;
 
-		if (response.status === 404 || resObj?.error) {
-			return { available: true, platform: 'npm', message: resObj.error };
-		}
-
-		return { available: false, platform: 'npm', url };
+		const result: AvaiabilityResult =
+			response.status === 404 || resObj?.error
+				? { available: true, platform: 'npm', message: resObj?.error }
+				: { available: false, platform: 'npm', url };
+		setCache(cacheKey, result);
+		return result;
 	} catch (error) {
 		return {
 			available: null,
@@ -27,6 +37,7 @@ async function checkNpmAvailability(name: string): Promise<AvaiabilityResult> {
 async function checkGitHubAvailability(
 	name: string,
 	owner: string,
+	ttlMs: number,
 ): Promise<AvaiabilityResult> {
 	if (!owner) {
 		return {
@@ -35,22 +46,31 @@ async function checkGitHubAvailability(
 			error: 'Specify owner with -o to check GitHub repo',
 		};
 	}
+
+	const cacheKey = `github:${owner}/${name}`;
+	const cached = getCache<AvaiabilityResult>(cacheKey, ttlMs);
+	if (cached) return cached;
+
 	const url = `https://api.github.com/repos/${owner}/${name}`;
 	try {
-		const response = await fetch(url, {
+		const response = await fetchWithRateLimit(url, {
 			headers: {
 				'User-Agent': 'npm-name-checker2',
 			},
 		});
 		const resObj = (await response.json()) as any;
-		if (resObj.status === '404' && resObj.message === 'Not Found') {
-			return {
-				available: true,
-				platform: 'github',
-				message: resObj.message,
-			};
-		}
-		return { available: false, platform: 'github', url };
+
+		const result: AvaiabilityResult =
+			response.status === 404 ||
+			(resObj.status === '404' && resObj.message === 'Not Found')
+				? {
+						available: true,
+						platform: 'github',
+						message: resObj.message,
+					}
+				: { available: false, platform: 'github', url };
+		setCache(cacheKey, result);
+		return result;
 	} catch (error) {
 		return {
 			platform: 'github',
@@ -114,14 +134,17 @@ function displayResults(
 export async function checkNameAvailability(
 	name: string,
 	owner: string,
+	ttlMinutes = 60,
 ): Promise<void> {
+	const ttlMs = ttlMinutes * 60 * 1000;
+
 	const spinner = ora(
 		`🔍 Checking availability for ${chalk.cyan(`${name}`)} ...`,
 	).start();
 	try {
 		const results = await Promise.allSettled([
-			checkNpmAvailability(name),
-			checkGitHubAvailability(name, owner),
+			checkNpmAvailability(name, ttlMs),
+			checkGitHubAvailability(name, owner, ttlMs),
 		]);
 
 		spinner.stop();
