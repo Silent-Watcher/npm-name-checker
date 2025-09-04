@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { styleText } from 'node:util';
 import ora from 'ora';
 import { getCache, setCache } from './cache';
 import { fetchWithRateLimit } from './rateLimit';
@@ -93,22 +93,24 @@ function displayResults(
 
 	results.forEach((result) => {
 		if (result.status === 'fulfilled') {
-			const { platform, available, error, url, message } = result.value;
+			const { platform, available, error } = result.value;
 
 			// Create platform name with consistent spacing
 			const platformLabel = `${platform}:`.padEnd(maxPlatformLength + 2);
 
 			if (error) {
-				console.log(`${chalk.red(platformLabel)} ${error}`);
+				console.log(`${styleText('red', platformLabel)} ${error}`);
 			} else {
 				const status = available
-					? chalk.green('Available')
-					: chalk.red('Taken');
+					? styleText('green', 'Available')
+					: styleText('red', 'Taken');
 
-				console.log(`${chalk.bold(platformLabel)} ${status}`);
+				console.log(`${styleText('bold', platformLabel)} ${status}`);
 			}
 		} else {
-			console.log(`${chalk.red('Error:')} ${result.reason.message}`);
+			console.log(
+				`${styleText('red', 'Error:')} ${result.reason.message}`,
+			);
 		}
 	});
 
@@ -126,7 +128,10 @@ function displayResults(
 
 	if (availablePlatforms.length > 0) {
 		console.log(
-			chalk.green(`✅ Available on: ${availablePlatforms.join(', ')}`),
+			styleText(
+				'green',
+				`✅ Available on: ${availablePlatforms.join(', ')}`,
+			),
 		);
 	}
 }
@@ -139,7 +144,7 @@ export async function checkNameAvailability(
 	const ttlMs = ttlMinutes * 60 * 1000;
 
 	const spinner = ora(
-		`🔍 Checking availability for ${chalk.cyan(`${name}`)} ...`,
+		`🔍 Checking availability for ${styleText('cyan', name)} ...`,
 	).start();
 	try {
 		const results = await Promise.allSettled([
@@ -152,9 +157,9 @@ export async function checkNameAvailability(
 		displayResults(name, results);
 	} catch (error) {
 		console.error(
-			chalk.red(
-				'Error checking name availability:',
-				(error as Error).message,
+			styleText(
+				'red',
+				`Error checking name availability: ${(error as Error).message}`,
 			),
 		);
 	}

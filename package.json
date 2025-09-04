@@ -65,7 +65,6 @@
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
-		"chalk": "^5.5.0",
 		"commander": "^14.0.0",
 		"node-cache": "^5.1.2",
 		"ora": "^8.2.0",
