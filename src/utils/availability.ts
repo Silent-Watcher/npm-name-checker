@@ -1,6 +1,8 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import type { AvaiabilityResult } from './types';
+import { generateAlternatives } from "./recommender";
+
 
 async function checkNpmAvailability(name: string): Promise<AvaiabilityResult> {
 	const url = `https://registry.npmjs.org/${name}`;
@@ -24,39 +26,22 @@ async function checkNpmAvailability(name: string): Promise<AvaiabilityResult> {
 	}
 }
 
-async function checkGitHubAvailability(
-	name: string,
-	owner: string,
-): Promise<AvaiabilityResult> {
+async function checkGitHubAvailability(name: string, owner?: string): Promise<AvaiabilityResult> {
 	if (!owner) {
-		return {
-			platform: 'github',
-			available: null,
-			error: 'Specify owner with -o to check GitHub repo',
-		};
+		return { platform: 'github', available: null, error: 'Specify owner with -o to check GitHub repo' };
 	}
 	const url = `https://api.github.com/repos/${owner}/${name}`;
 	try {
 		const response = await fetch(url, {
-			headers: {
-				'User-Agent': 'npm-name-checker2',
-			},
+			headers: { 'User-Agent': 'npm-name-checker2' },
 		});
 		const resObj = (await response.json()) as any;
 		if (resObj.status === '404' && resObj.message === 'Not Found') {
-			return {
-				available: true,
-				platform: 'github',
-				message: resObj.message,
-			};
+			return { available: true, platform: 'github', message: resObj.message };
 		}
 		return { available: false, platform: 'github', url };
 	} catch (error) {
-		return {
-			platform: 'github',
-			available: null,
-			error: (error as Error).message,
-		};
+		return { platform: 'github', available: null, error: (error as Error).message };
 	}
 }
 
@@ -111,28 +96,62 @@ function displayResults(
 	}
 }
 
-export async function checkNameAvailability(
-	name: string,
-	owner: string,
-): Promise<void> {
-	const spinner = ora(
-		`🔍 Checking availability for ${chalk.cyan(`${name}`)} ...`,
-	).start();
+export async function checkNameAvailability(name: string, owner?: string): Promise<void> {
+	const spinner = ora(`🔍 Checking availability for ${chalk.cyan(`${name}`)} ...`).start();
 	try {
 		const results = await Promise.allSettled([
 			checkNpmAvailability(name),
 			checkGitHubAvailability(name, owner),
 		]);
-
 		spinner.stop();
 		spinner.clear();
 		displayResults(name, results);
-	} catch (error) {
-		console.error(
-			chalk.red(
-				'Error checking name availability:',
-				(error as Error).message,
-			),
+
+		// Check if any platform is taken (available === false) or has error preventing check
+		const fulfilledResults = results.filter(
+			(r): r is PromiseFulfilledResult<AvaiabilityResult> => r.status === 'fulfilled'
 		);
+		const isFullyAvailable = fulfilledResults.every((r) => r.value.available === true || r.value.available === null);
+		if (isFullyAvailable) {
+			return; // No suggestions needed if everything is available or skipped
+		}
+
+		console.log(chalk.bold('\nSuggestions for available alternatives:'));
+		const altSpinner = ora('Generating and checking alternatives...').start();
+
+		const alts = generateAlternatives(name);
+		const availableAlts: string[] = [];
+		const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+		for (let i = 0; i < alts.length; i++) {
+			const alt = alts[i];
+			if (!alt) continue;
+			await delay(i * 200);
+			const altChecks: Promise<AvaiabilityResult>[] = [checkNpmAvailability(alt)];
+			if (owner) {
+				altChecks.push(checkGitHubAvailability(alt, owner));
+			}
+			const altResults = await Promise.allSettled(altChecks);
+			const altFulfilled = altResults.filter(
+				(r): r is PromiseFulfilledResult<AvaiabilityResult> => r.status === 'fulfilled'
+			);
+			const isAltFullyAvailable = altFulfilled.every((r) => r.value.available === true || r.value.available === null);
+			if (isAltFullyAvailable && altFulfilled.length === altChecks.length) {
+				availableAlts.push(alt);
+			}
+			if (availableAlts.length >= 10) break;
+		}
+
+		altSpinner.stop();
+		altSpinner.clear();
+
+		if (availableAlts.length === 0) {
+			console.log('No immediate suggestions available – try broader variations.');
+		} else {
+			const platforms = owner ? 'npm and GitHub' : 'npm';
+			availableAlts.forEach((alt) => console.log(`- ${chalk.green(alt)} (available on ${platforms})`) );
+		}
+	} catch (error) {
+		console.error(chalk.red('Error checking name availability: ' + (error as Error).message));
 	}
 }

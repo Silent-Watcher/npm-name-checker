@@ -65,6 +65,7 @@
 	"dependencies": {
 		"chalk": "^5.5.0",
 		"commander": "^14.0.0",
-		"ora": "^8.2.0"
+		"ora": "^8.2.0",
+		"synonyms": "^1.0.1"
 	}
 }
