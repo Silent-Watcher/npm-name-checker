@@ -10,7 +10,7 @@ export async function fetchWithRateLimit(
 	while (attempt < maxRetries) {
 		const res = await fetch(url, options);
 
-		if (res.ok) {
+		if (res.ok || res.status === 404) {
 			return res;
 		}
 
