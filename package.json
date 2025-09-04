@@ -66,8 +66,10 @@
 	},
 	"dependencies": {
 		"commander": "^14.0.0",
+		"synonyms": "^1.0.1"
 		"node-cache": "^5.1.2",
 		"ora": "^8.2.0",
 		"p-retry": "^7.0.0"
+
 	}
 }
