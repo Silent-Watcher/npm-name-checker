@@ -60,6 +60,23 @@ name-check awesome-package -o my-org
 - Real-time results: Get immediate feedback with color-coded output
 - Simple interface: Easy-to-use command line interface
 - TypeScript: Built with modern TypeScript for reliability
+- Smart caching: Results are cached locally to improve performance
+- Rate limiting: Automatic retry logic for API rate limits
+
+
+## Cache Management
+
+View cached entries:
+
+```bash
+name-check cache list
+```
+
+Clear all cached data:
+
+```bash
+name-check cache clear
+```
 
 
 ---
