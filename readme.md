@@ -59,7 +59,7 @@ name-check awesome-package -o my-org
 - Multi-platform checking: Verify name availability on both npm and GitHub
 - Real-time results: Get immediate feedback with color-coded output
 - Simple interface: Easy-to-use command line interface
-- TypeScript: Built with modern TypeScript for reliability
+- Alternative suggestions: Get intelligent name suggestions when your desired name is taken
 - Smart caching: Results are cached locally to improve performance
 - Rate limiting: Automatic retry logic for API rate limits
 
@@ -78,6 +78,23 @@ Clear all cached data:
 name-check cache clear
 ```
 
+## Alternative Suggestions
+
+When a name is unavailable, the tool automatically suggests available alternatives by:
+
+- Adding common prefixes/suffixes (js, ts, api, core, lib, kit, pro, plus)
+- Generating synonyms using natural language processing
+- Creating separator variations (hyphens, underscores, camelCase)
+- Adding context words (utils, helper, toolkit, framework, module)
+
+Example output when a name is taken:
+
+```bash
+Suggestions for available alternatives:
+- awesome-package-js (available on npm and GitHub)
+- fantastic-package (available on npm and GitHub)
+- awesome-package-kit (available on npm and GitHub)
+```
 
 ---
 
