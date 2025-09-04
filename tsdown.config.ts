@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 export default defineConfig({
 	entry: ['src/*'],
@@ -6,20 +6,13 @@ export default defineConfig({
 	outDir: 'dist',
 	clean: true,
 	sourcemap: false,
-	splitting: false,
+	// splitting: false,
 	bundle: true,
 	dts: false,
 	minify: true,
-	external: [
-		'fs/promises',
-		'path',
-		'commander',
-		'@babel/parser',
-		'@babel/types',
-		'@babel/traverse',
-	],
+	external: ['fs/promises', 'path', 'commander'],
 	loader: {
 		'.json': 'json', // ⬅ transforms JSON into normal ESM object
 	},
-	outExtension: () => ({ js: '.js' }), // Force .js instead of .mjs
+	// outExtension: () => ({ js: '.js' }), // Force .js instead of .mjs
 });
