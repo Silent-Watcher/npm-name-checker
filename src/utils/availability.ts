@@ -2,9 +2,8 @@ import { styleText } from 'node:util';
 import ora from 'ora';
 import { getCache, setCache } from './cache';
 import { fetchWithRateLimit } from './rateLimit';
+import { generateAlternatives } from './recommender';
 import type { AvaiabilityResult } from './types';
-import { generateAlternatives } from "./recommender";
-
 
 export async function checkNpmAvailability(
 	name: string,
@@ -36,15 +35,17 @@ export async function checkNpmAvailability(
 	}
 }
 
-
 async function checkGitHubAvailability(
 	name: string,
 	owner: string,
 	ttlMs: number,
 ): Promise<AvaiabilityResult> {
-    
 	if (!owner) {
-		return { platform: 'github', available: null, error: 'Specify owner with -o to check GitHub repo' };
+		return {
+			platform: 'github',
+			available: null,
+			error: 'Specify owner with -o to check GitHub repo',
+		};
 	}
 
 	const cacheKey = `github:${owner}/${name}`;
@@ -53,7 +54,6 @@ async function checkGitHubAvailability(
 
 	const url = `https://api.github.com/repos/${owner}/${name}`;
 	try {
-
 		const response = await fetchWithRateLimit(url, {
 			headers: {
 				'User-Agent': 'npm-name-checker2',
@@ -73,7 +73,11 @@ async function checkGitHubAvailability(
 		setCache(cacheKey, result);
 		return result;
 	} catch (error) {
-		return { platform: 'github', available: null, error: (error as Error).message };
+		return {
+			platform: 'github',
+			available: null,
+			error: (error as Error).message,
+		};
 	}
 }
 
@@ -133,7 +137,6 @@ function displayResults(
 	}
 }
 
-
 export async function checkNameAvailability(
 	name: string,
 	owner: string,
@@ -144,7 +147,6 @@ export async function checkNameAvailability(
 	const spinner = ora(
 		`🔍 Checking availability for ${styleText('cyan', name)} ...`,
 	).start();
-
 	try {
 		const results = await Promise.allSettled([
 			checkNpmAvailability(name, ttlMs),
@@ -156,35 +158,50 @@ export async function checkNameAvailability(
 
 		// Check if any platform is taken (available === false) or has error preventing check
 		const fulfilledResults = results.filter(
-			(r): r is PromiseFulfilledResult<AvaiabilityResult> => r.status === 'fulfilled'
-
+			(r): r is PromiseFulfilledResult<AvaiabilityResult> =>
+				r.status === 'fulfilled',
 		);
-		const isFullyAvailable = fulfilledResults.every((r) => r.value.available === true || r.value.available === null);
+		const isFullyAvailable = fulfilledResults.every(
+			(r) => r.value.available === true || r.value.available === null,
+		);
 		if (isFullyAvailable) {
 			return; // No suggestions needed if everything is available or skipped
 		}
 
-		console.log(chalk.bold('\nSuggestions for available alternatives:'));
-		const altSpinner = ora('Generating and checking alternatives...').start();
+		console.log(
+			styleText('bold', '\nSuggestions for available alternatives:'),
+		);
+		const altSpinner = ora(
+			'Generating and checking alternatives...',
+		).start();
 
 		const alts = generateAlternatives(name);
 		const availableAlts: string[] = [];
-		const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+		const delay = (ms: number) =>
+			new Promise((resolve) => setTimeout(resolve, ms));
 
 		for (let i = 0; i < alts.length; i++) {
 			const alt = alts[i];
 			if (!alt) continue;
 			await delay(i * 200);
-			const altChecks: Promise<AvaiabilityResult>[] = [checkNpmAvailability(alt)];
+			const altChecks: Promise<AvaiabilityResult>[] = [
+				checkNpmAvailability(alt, ttlMinutes),
+			];
 			if (owner) {
-				altChecks.push(checkGitHubAvailability(alt, owner));
+				altChecks.push(checkGitHubAvailability(alt, owner, ttlMinutes));
 			}
 			const altResults = await Promise.allSettled(altChecks);
 			const altFulfilled = altResults.filter(
-				(r): r is PromiseFulfilledResult<AvaiabilityResult> => r.status === 'fulfilled'
+				(r): r is PromiseFulfilledResult<AvaiabilityResult> =>
+					r.status === 'fulfilled',
 			);
-			const isAltFullyAvailable = altFulfilled.every((r) => r.value.available === true || r.value.available === null);
-			if (isAltFullyAvailable && altFulfilled.length === altChecks.length) {
+			const isAltFullyAvailable = altFulfilled.every(
+				(r) => r.value.available === true || r.value.available === null,
+			);
+			if (
+				isAltFullyAvailable &&
+				altFulfilled.length === altChecks.length
+			) {
 				availableAlts.push(alt);
 			}
 			if (availableAlts.length >= 10) break;
@@ -194,12 +211,23 @@ export async function checkNameAvailability(
 		altSpinner.clear();
 
 		if (availableAlts.length === 0) {
-			console.log('No immediate suggestions available – try broader variations.');
+			console.log(
+				'No immediate suggestions available – try broader variations.',
+			);
 		} else {
 			const platforms = owner ? 'npm and GitHub' : 'npm';
-			availableAlts.forEach((alt) => console.log(`- ${chalk.green(alt)} (available on ${platforms})`) );
+			availableAlts.forEach((alt) => {
+				console.log(
+					`- ${styleText('green', alt)} (available on ${platforms})`,
+				);
+			});
 		}
 	} catch (error) {
-		console.error(chalk.red('Error checking name availability: ' + (error as Error).message));
+		console.error(
+			styleText(
+				'red',
+				'Error checking name availability: ' + (error as Error).message,
+			),
+		);
 	}
 }
